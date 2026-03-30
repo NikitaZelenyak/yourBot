@@ -15,8 +15,9 @@ async function parsePdf(buffer: Buffer): Promise<string> {
   return new Promise((resolve, reject) => {
     const pdfParser = new PDFParser()
 
-    pdfParser.on('pdfParser_dataError', (errData: { parserError: Error }) => {
-      reject(new Error('PDF parse error: ' + errData.parserError.message))
+    pdfParser.on('pdfParser_dataError', (errData: Error | { parserError: Error }) => {
+      const msg = errData instanceof Error ? errData.message : errData.parserError.message
+      reject(new Error('PDF parse error: ' + msg))
     })
 
     pdfParser.on('pdfParser_dataReady', (pdfData: {
