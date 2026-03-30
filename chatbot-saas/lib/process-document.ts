@@ -7,6 +7,8 @@ const CHUNK_INSERT_BATCH = 50
 export async function processDocument(documentId: string): Promise<void> {
   const supabase = createServiceClient()
 
+  console.log('[process-document] Starting:', documentId)
+
   // 1. Fetch document record
   const { data: doc } = await supabase
     .from('kb_documents')
@@ -19,23 +21,32 @@ export async function processDocument(documentId: string): Promise<void> {
     return
   }
 
+  console.log('[process-document] Fetched document:', doc.filename)
+
   try {
     // 2. Download file from storage
+    console.log('[process-document] Downloading from storage:', doc.storage_path)
     const { data: fileData, error: downloadError } = await supabase.storage
       .from('knowledge-base-files')
       .download(doc.storage_path)
 
-    if (downloadError || !fileData) {
-      throw new Error(downloadError?.message ?? 'Failed to download file')
+    if (downloadError) {
+      throw new Error('Storage download failed: ' + downloadError.message)
+    }
+    if (!fileData) {
+      throw new Error('Storage download returned no data')
     }
 
     const buffer = Buffer.from(await fileData.arrayBuffer())
+    console.log('[process-document] File downloaded, size:', buffer.length)
 
     // 3. Parse file into text
     const text = await parseFile(buffer, doc.file_type)
+    console.log('[process-document] Parsed text length:', text.length)
 
     // 4. Chunk text
     const chunks = chunkText(text)
+    console.log('[process-document] Chunks created:', chunks.length)
 
     if (chunks.length === 0) {
       await supabase
@@ -46,7 +57,9 @@ export async function processDocument(documentId: string): Promise<void> {
     }
 
     // 5. Generate embeddings in batches
+    console.log('[process-document] Starting embeddings for', chunks.length, 'chunks')
     const embeddings = await embedTexts(chunks)
+    console.log('[process-document] Embeddings done, inserting chunks...')
 
     // 6. Insert chunks in batches of 50
     for (let i = 0; i < chunks.length; i += CHUNK_INSERT_BATCH) {
@@ -74,10 +87,12 @@ export async function processDocument(documentId: string): Promise<void> {
       .update({ status: 'ready', chunk_count: chunks.length })
       .eq('id', documentId)
 
-    console.log(`[process-document] done: ${documentId}, ${chunks.length} chunks`)
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    console.error('[process-document] failed:', documentId, message)
+    console.log('[process-document] Complete:', chunks.length, 'chunks stored')
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    const stack = error instanceof Error ? error.stack : ''
+    console.error('[process-document] FAILED:', message)
+    console.error('[process-document] Stack:', stack)
 
     await supabase
       .from('kb_documents')

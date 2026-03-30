@@ -1,28 +1,72 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
 import { useChat } from '@/lib/use-chat'
 import MessageBubble from './MessageBubble'
 import ChatInput from './ChatInput'
+import type { RagDebugInfo } from '@/types'
+
+export type ChatWindowRef = {
+  sendMessage: (content: string) => void
+}
 
 type Props = {
   botId: string
   welcomeMessage?: string
   primaryColor?: string
+  /** Override the default embed API. Pass '/api/chat' for dashboard preview. */
+  apiEndpoint?: string
+  /** Extra fields merged into the POST body (e.g. { botId } for /api/chat). */
+  extraBody?: Record<string, unknown>
+  /** Called after each message send with RAG debug info from /api/chat/debug. */
+  onDebugInfo?: (info: RagDebugInfo) => void
 }
 
-export default function ChatWindow({
-  botId,
-  welcomeMessage,
-  primaryColor = '#6366f1',
-}: Props) {
-  const api = `/api/embed/${botId}/chat`
-  const { messages, isLoading, append } = useChat({ api })
+const ChatWindow = forwardRef<ChatWindowRef, Props>(function ChatWindow(
+  {
+    botId,
+    welcomeMessage,
+    primaryColor = '#6366f1',
+    apiEndpoint,
+    extraBody,
+    onDebugInfo,
+  },
+  ref
+) {
+  const api = apiEndpoint ?? `/api/embed/${botId}/chat`
+  const { messages, isLoading, append } = useChat({ api, body: extraBody })
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isLoading])
+
+  const wrappedAppend = useCallback(
+    async (content: string) => {
+      if (onDebugInfo) {
+        fetch('/api/chat/debug', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            botId,
+            messages: [
+              ...messages.map((m) => ({ role: m.role, content: m.content })),
+              { role: 'user' as const, content },
+            ],
+          }),
+        })
+          .then((r) => r.json())
+          .then((json: { data?: RagDebugInfo }) => {
+            if (json.data) onDebugInfo(json.data)
+          })
+          .catch(() => {})
+      }
+      await append(content)
+    },
+    [append, onDebugInfo, botId, messages]
+  )
+
+  useImperativeHandle(ref, () => ({ sendMessage: wrappedAppend }), [wrappedAppend])
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -45,7 +89,6 @@ export default function ChatWindow({
           />
         ))}
 
-        {/* Typing indicator */}
         {isLoading && (
           <div className="flex justify-start">
             <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm bg-[var(--color-muted)] px-4 py-3">
@@ -60,11 +103,9 @@ export default function ChatWindow({
       </div>
 
       {/* Input */}
-      <ChatInput
-        onSubmit={append}
-        isLoading={isLoading}
-        primaryColor={primaryColor}
-      />
+      <ChatInput onSubmit={wrappedAppend} isLoading={isLoading} primaryColor={primaryColor} />
     </div>
   )
-}
+})
+
+export default ChatWindow

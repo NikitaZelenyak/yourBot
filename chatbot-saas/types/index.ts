@@ -86,3 +86,18 @@ export type BotKnowledgeBase = {
   kb_id: string
   created_at: string
 }
+
+export type RagDebugChunk = {
+  content: string
+  similarity: number
+  source: string
+  document_id: string
+}
+
+export type RagDebugInfo = {
+  kbs_searched: string[]
+  chunks_found: number
+  rag_used: boolean
+  chunks: RagDebugChunk[]
+  system_prompt_preview: string
+}

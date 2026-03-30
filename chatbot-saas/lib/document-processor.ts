@@ -1,6 +1,5 @@
 import mammoth from 'mammoth'
 import Papa from 'papaparse'
-import { PDFParse } from 'pdf-parse'
 
 const CHUNK_SIZE = 400      // tokens per chunk
 const CHUNK_OVERLAP = 50    // token overlap between chunks
@@ -10,12 +9,47 @@ const WORDS_PER_CHUNK = Math.floor(CHUNK_SIZE * 0.75)       // 300
 const OVERLAP_WORDS = Math.floor(CHUNK_OVERLAP * 0.75)      // 37
 const STEP = WORDS_PER_CHUNK - OVERLAP_WORDS                // 263
 
+async function parsePdf(buffer: Buffer): Promise<string> {
+  const PDFParser = (await import('pdf2json')).default
+
+  return new Promise((resolve, reject) => {
+    const pdfParser = new PDFParser()
+
+    pdfParser.on('pdfParser_dataError', (errData: { parserError: Error }) => {
+      reject(new Error('PDF parse error: ' + errData.parserError.message))
+    })
+
+    pdfParser.on('pdfParser_dataReady', (pdfData: {
+      Pages: Array<{
+        Texts: Array<{
+          R: Array<{ T: string }>
+        }>
+      }>
+    }) => {
+      try {
+        const text = pdfData.Pages
+          .map(page =>
+            page.Texts
+              .map(text =>
+                text.R.map(r => decodeURIComponent(r.T)).join('')
+              )
+              .join(' ')
+          )
+          .join('\n\n')
+        resolve(text)
+      } catch (e) {
+        reject(new Error('PDF text extraction failed: ' + String(e)))
+      }
+    })
+
+    pdfParser.parseBuffer(buffer)
+  })
+}
+
 export async function parseFile(buffer: Buffer, fileType: string): Promise<string> {
   switch (fileType) {
     case 'pdf': {
-      const parser = new PDFParse({ data: buffer })
-      const result = await parser.getText()
-      return result.text
+      return parsePdf(buffer)
     }
     case 'docx': {
       const result = await mammoth.extractRawText({ buffer })

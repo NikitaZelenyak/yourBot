@@ -141,10 +141,17 @@ export async function POST(
     )
   }
 
-  // Fire-and-forget processing — do NOT await
-  processDocument(doc.id).catch((err) => {
-    console.error('[documents/upload] processDocument failed:', err)
-  })
+  // Return response first, then trigger processing via void IIFE.
+  // Floating promises get GC'd before completing in serverless — IIFE is safer.
+  const response = Response.json({ data: doc }, { status: 201 })
 
-  return Response.json({ data: doc }, { status: 201 })
+  void (async () => {
+    try {
+      await processDocument(doc.id)
+    } catch (e) {
+      console.error('[documents-route] processDocument error:', e)
+    }
+  })()
+
+  return response
 }

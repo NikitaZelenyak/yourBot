@@ -13,6 +13,7 @@ export type ChatMessage = {
 type UseChatOptions = {
   api: string
   initialMessages?: ChatMessage[]
+  body?: Record<string, unknown>
 }
 
 type UseChatReturn = {
@@ -25,7 +26,7 @@ function uid() {
   return Math.random().toString(36).slice(2)
 }
 
-export function useChat({ api, initialMessages = [] }: UseChatOptions): UseChatReturn {
+export function useChat({ api, initialMessages = [], body }: UseChatOptions): UseChatReturn {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -47,6 +48,7 @@ export function useChat({ api, initialMessages = [] }: UseChatOptions): UseChatR
               role: m.role,
               content: m.content,
             })),
+            ...body,
           }),
         })
 
