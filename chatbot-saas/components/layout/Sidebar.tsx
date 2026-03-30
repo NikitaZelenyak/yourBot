@@ -3,16 +3,17 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Bot, BarChart3, BookOpen, Settings, Zap, LogOut, Loader2, FileText } from 'lucide-react'
+import { Bot, BarChart3, BookOpen, Settings, Zap, LogOut, Loader2, FileText, FlaskConical } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
 
 const navItems = [
-  { label: 'Bots', href: '/bots', icon: Bot },
-  { label: 'Analytics', href: '/analytics', icon: BarChart3 },
-  { label: 'Knowledge Bases', href: '/knowledge-bases', icon: BookOpen },
-  { label: 'Settings', href: '/settings', icon: Settings },
+  { label: 'Bots', href: '/bots', icon: Bot, badge: null },
+  { label: 'Analytics', href: '/analytics', icon: BarChart3, badge: null },
+  { label: 'Knowledge Bases', href: '/knowledge-bases', icon: BookOpen, badge: null },
+  { label: 'Simulator', href: '/simulator', icon: FlaskConical, badge: 'Test' },
+  { label: 'Settings', href: '/settings', icon: Settings, badge: null },
 ]
 
 export default function Sidebar() {
@@ -70,6 +71,11 @@ export default function Sidebar() {
                   )}
                 />
                 {item.label}
+                {item.badge && !isActive && (
+                  <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-300 leading-none">
+                    {item.badge}
+                  </span>
+                )}
                 {isActive && (
                   <motion.span
                     layoutId="sidebar-active-dot"

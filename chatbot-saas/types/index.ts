@@ -184,3 +184,45 @@ export type ChatSessionWithAnalytics = ChatSession & {
   visitor_phone: string | null
   ended_at: string | null
 }
+
+// Simulator types
+export type SimulatorPage = {
+  label: string
+  path: string
+}
+
+export type SimulatorVisitor = {
+  enabled: boolean
+  visitorId: string
+  name: string
+  email: string
+  phone: string
+}
+
+export type SimulatorConfig = {
+  botId: string
+  botName: string
+  welcomeMessage: string | null
+  apiKey: string
+  visitor: SimulatorVisitor
+  pageLabel: string
+  pagePath: string
+  pageTitle: string
+  customUrl: string
+}
+
+export type SimulatorMessage = {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  streaming?: boolean
+}
+
+export type RequestInspectorData = {
+  url: string
+  headers: Record<string, string>
+  body: string
+  status: number | null
+  timeMs: number | null
+  responsePreview: string | null
+}

@@ -147,6 +147,17 @@ Agent assignments for each feature:
 
 ---
 
+## Simulator — COMPLETE
+
+- [x] Simulator page (/simulator)
+- [x] Fake website preview with page switching
+- [x] Real API integration in simulator
+- [x] Visitor identity testing
+- [x] Request inspector
+- [x] Sidebar link
+
+---
+
 ## Backlog (M3+)
 - [ ] Billing (Stripe)
 - [ ] Bot templates

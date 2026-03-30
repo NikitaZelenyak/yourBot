@@ -137,6 +137,20 @@ SUPABASE_ACCESS_TOKEN         → local dev only (MCP)
 - Supabase JS client does not support GROUP BY or subqueries — aggregate in JS after
   fetching rows, or use .rpc() for complex queries.
 
+- Simulator page at /simulator makes real API calls to
+  /api/public/v1/[botId]/chat — generates real sessions
+  and analytics data. This is intentional for testing.
+  The chat widget in simulator uses raw fetch() + ReadableStream,
+  not useChat hook — simulates real third-party integration.
+  Good reference for what client-side code looks like
+  when integrating the API.
+  Components live in components/simulator/:
+    ChatWidget.tsx — floating bubble + chat window, raw fetch streaming
+    SimulatorControls.tsx — left panel: bot select, API key, visitor, page, quick messages
+    FakeWebsitePreview.tsx — right panel: fake browser chrome + fake website + ChatWidget
+    FakePageContent.tsx — page-specific fake content (home/pricing/dining etc.)
+    RequestInspector.tsx — collapsible last-request debug panel
+
 - pdf-parse is incompatible with Next.js Turbopack — DOMMatrix not defined error from canvas dependency.
   Cannot be fixed with config. Solution: use pdf2json instead — pure Node.js, no browser deps.
   pdf2json uses event emitter pattern not promises — wrap in new Promise() with pdfParser_dataReady event.
