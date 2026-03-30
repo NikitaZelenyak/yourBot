@@ -8,10 +8,20 @@ import { embedText } from '@/lib/embeddings'
 import type { Bot } from '@/types'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
+const visitorContextSchema = z.object({
+  userId: z.string().optional(),
+  userName: z.string().optional(),
+  userEmail: z.string().optional(),
+  userPhone: z.string().optional(),
+  pageUrl: z.string().optional(),
+  pageTitle: z.string().optional(),
+})
+
 const bodySchema = z.object({
   messages: z
     .array(z.object({ role: z.enum(['user', 'assistant']), content: z.string() }))
     .min(1),
+  visitorContext: visitorContextSchema.optional(),
 })
 
 async function getKbContext(
@@ -50,6 +60,76 @@ If the answer is not in the context, use your general knowledge.
 ${context}
 
 ---`
+}
+
+async function runPostResponseAnalytics(
+  sessionId: string,
+  botId: string,
+  botMessageContent: string,
+  userQuestion: string,
+  pageUrl: string | undefined
+) {
+  try {
+    const svc = createServiceClient()
+
+    // 1. Increment message_count using raw SQL via execute
+    // Supabase JS doesn't support column-relative updates natively,
+    // so we use a targeted SELECT + UPDATE pattern.
+    const { data: sessionRow } = await svc
+      .from('chat_sessions')
+      .select('message_count')
+      .eq('id', sessionId)
+      .single()
+
+    if (sessionRow !== null) {
+      const currentCount = (sessionRow as { message_count: number | null }).message_count ?? 0
+      await svc
+        .from('chat_sessions')
+        .update({ message_count: currentCount + 1 })
+        .eq('id', sessionId)
+    }
+
+    // 2. Check if bot response is unanswered
+    const { data: isUnanswered } = await svc.rpc('is_unanswered_response', {
+      message_content: botMessageContent,
+    })
+
+    if (isUnanswered && userQuestion) {
+      const { data: existing } = await svc
+        .from('unanswered_questions')
+        .select('id, frequency')
+        .eq('bot_id', botId)
+        .eq('question', userQuestion)
+        .maybeSingle()
+
+      if (existing) {
+        await svc
+          .from('unanswered_questions')
+          .update({ frequency: existing.frequency + 1 })
+          .eq('id', existing.id)
+      } else {
+        await svc.from('unanswered_questions').insert({
+          bot_id: botId,
+          session_id: sessionId,
+          question: userQuestion,
+          page_url: pageUrl ?? null,
+        })
+      }
+    }
+
+    // 3. Compute and update session outcome
+    const { data: outcome } = await svc.rpc('compute_session_outcome', {
+      p_session_id: sessionId,
+    })
+    if (outcome) {
+      await svc
+        .from('chat_sessions')
+        .update({ outcome })
+        .eq('id', sessionId)
+    }
+  } catch (e) {
+    console.error('[public-v1-chat] post-response analytics error:', e)
+  }
 }
 
 export async function POST(
@@ -121,11 +201,33 @@ export async function POST(
     .eq('id', apiKey.id)
     .then(() => {})
 
-  // 6. RAG: inject KB context if bot has connected knowledge bases
-  const lastUserMessage = parsed.data.messages[parsed.data.messages.length - 1]?.content ?? ''
+  const { messages, visitorContext } = parsed.data
+
+  // 6. Create chat session with visitor context fields
+  const sessionInsert = {
+    bot_id: botId,
+    visitor_id_custom: visitorContext?.userId ?? null,
+    visitor_name: visitorContext?.userName ?? null,
+    visitor_email: visitorContext?.userEmail ?? null,
+    visitor_phone: visitorContext?.userPhone ?? null,
+    page_url: visitorContext?.pageUrl ?? null,
+    page_title: visitorContext?.pageTitle ?? null,
+  }
+
+  const { data: session } = await supabase
+    .from('chat_sessions')
+    .insert(sessionInsert)
+    .select('id')
+    .single()
+
+  const sessionId = session?.id ?? null
+  console.log('[public-v1-chat] session created:', sessionId)
+
+  // 7. RAG: inject KB context if bot has connected knowledge bases
+  const lastUserMessage = messages[messages.length - 1]?.content ?? ''
   const kbContext = await getKbContext(botId, lastUserMessage, supabase)
 
-  // 7. Build system prompt — KB context prepended so facts come first
+  // 8. Build system prompt — KB context prepended so facts come first
   const systemPrompt = kbContext
     ? kbContext + '\n\n' + buildSystemPrompt(bot as Bot)
     : buildSystemPrompt(bot as Bot)
@@ -133,9 +235,21 @@ export async function POST(
   const result = streamText({
     model: openai,
     system: systemPrompt,
-    messages: parsed.data.messages,
+    messages,
     maxOutputTokens: 1000,
     temperature: 0.7,
+    onFinish: ({ text }) => {
+      if (!sessionId) return
+      void (async () => {
+        await runPostResponseAnalytics(
+          sessionId,
+          botId,
+          text,
+          lastUserMessage,
+          visitorContext?.pageUrl
+        )
+      })()
+    },
   })
 
   return result.toUIMessageStreamResponse()

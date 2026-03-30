@@ -1,9 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
+import { useCallback, useEffect, useRef, forwardRef, useImperativeHandle, useState } from 'react'
 import { useChat } from '@/lib/use-chat'
 import MessageBubble from './MessageBubble'
 import ChatInput from './ChatInput'
+import EscalationForm from './EscalationForm'
 import type { RagDebugInfo } from '@/types'
 
 export type ChatWindowRef = {
@@ -20,6 +21,24 @@ type Props = {
   extraBody?: Record<string, unknown>
   /** Called after each message send with RAG debug info from /api/chat/debug. */
   onDebugInfo?: (info: RagDebugInfo) => void
+  /** When true, show escalation widget after unanswered responses */
+  showEscalation?: boolean
+  /** Session ID if known (used for escalation form) */
+  sessionId?: string | null
+}
+
+const UNANSWERED_PHRASES = [
+  "i don't know",
+  "i'm not sure",
+  "i don't have information",
+  "i cannot find",
+  "not able to find",
+  "don't have details",
+]
+
+function hasUnansweredPhrase(content: string) {
+  const lower = content.toLowerCase()
+  return UNANSWERED_PHRASES.some((p) => lower.includes(p))
 }
 
 const ChatWindow = forwardRef<ChatWindowRef, Props>(function ChatWindow(
@@ -30,12 +49,15 @@ const ChatWindow = forwardRef<ChatWindowRef, Props>(function ChatWindow(
     apiEndpoint,
     extraBody,
     onDebugInfo,
+    showEscalation = false,
+    sessionId = null,
   },
   ref
 ) {
   const api = apiEndpoint ?? `/api/embed/${botId}/chat`
   const { messages, isLoading, append } = useChat({ api, body: extraBody })
   const bottomRef = useRef<HTMLDivElement>(null)
+  const [lastUserMessage, setLastUserMessage] = useState('')
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -43,6 +65,7 @@ const ChatWindow = forwardRef<ChatWindowRef, Props>(function ChatWindow(
 
   const wrappedAppend = useCallback(
     async (content: string) => {
+      setLastUserMessage(content)
       if (onDebugInfo) {
         fetch('/api/chat/debug', {
           method: 'POST',
@@ -67,6 +90,14 @@ const ChatWindow = forwardRef<ChatWindowRef, Props>(function ChatWindow(
   )
 
   useImperativeHandle(ref, () => ({ sendMessage: wrappedAppend }), [wrappedAppend])
+
+  // Detect if last assistant message is unanswered
+  const lastAssistantMsg = [...messages].reverse().find((m) => m.role === 'assistant')
+  const showEscalationWidget =
+    showEscalation &&
+    !isLoading &&
+    lastAssistantMsg != null &&
+    hasUnansweredPhrase(lastAssistantMsg.content)
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -101,6 +132,16 @@ const ChatWindow = forwardRef<ChatWindowRef, Props>(function ChatWindow(
 
         <div ref={bottomRef} />
       </div>
+
+      {/* Escalation widget — shows after unanswered bot responses */}
+      {showEscalationWidget && (
+        <EscalationForm
+          botId={botId}
+          sessionId={sessionId}
+          prefilledMessage={lastUserMessage}
+          primaryColor={primaryColor}
+        />
+      )}
 
       {/* Input */}
       <ChatInput onSubmit={wrappedAppend} isLoading={isLoading} primaryColor={primaryColor} />

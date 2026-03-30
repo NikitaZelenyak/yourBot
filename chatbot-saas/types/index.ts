@@ -101,3 +101,86 @@ export type RagDebugInfo = {
   chunks: RagDebugChunk[]
   system_prompt_preview: string
 }
+
+export type SessionAnalytics = {
+  id: string
+  session_id: string
+  bot_id: string
+  intent: string | null
+  sentiment: 'positive' | 'neutral' | 'negative' | null
+  topics: string[] | null
+  is_answered: boolean | null
+  unanswered_questions: string[] | null
+  performance_score: number | null
+  analyzed_at: string
+}
+
+export type TopicCluster = {
+  id: string
+  bot_id: string
+  topic_label: string
+  question_count: number
+  sample_questions: string[] | null
+  trend: 'rising' | 'stable' | 'falling' | null
+  computed_date: string
+}
+
+export type DailyMetrics = {
+  id: string
+  bot_id: string
+  date: string
+  total_sessions: number
+  total_messages: number
+  avg_messages_per_session: number
+  resolved_count: number
+  unresolved_count: number
+  abandoned_count: number
+  resolution_rate: number
+  performance_score: number
+  unique_visitors: number
+  unique_pages: number
+}
+
+export type UnansweredQuestion = {
+  id: string
+  bot_id: string
+  session_id: string | null
+  question: string
+  asked_at: string
+  page_url: string | null
+  frequency: number
+  status: 'open' | 'kb_updated' | 'ignored'
+}
+
+export type Escalation = {
+  id: string
+  session_id: string
+  bot_id: string
+  visitor_name: string | null
+  visitor_email: string
+  message: string
+  original_question: string | null
+  status: 'pending' | 'contacted' | 'resolved'
+  created_at: string
+}
+
+export type PageAnalytics = {
+  page_url: string
+  page_title: string | null
+  session_count: number
+  total_messages: number
+  resolution_rate: number | null
+}
+
+export type ChatSessionWithAnalytics = ChatSession & {
+  analytics?: SessionAnalytics
+  message_count: number
+  outcome: 'resolved' | 'unresolved' | 'abandoned' | null
+  page_url: string | null
+  page_title: string | null
+  visitor_id_custom: string | null
+  visitor_name: string | null
+  visitor_email: string | null
+  visitor_phone: string | null
+  ended_at: string | null
+}

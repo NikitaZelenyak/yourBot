@@ -40,6 +40,7 @@ export default async function EmbedPage({
         botId={bot.id}
         welcomeMessage={bot.welcome_message ?? undefined}
         primaryColor={bot.primary_color}
+        showEscalation
       />
     </div>
   )

@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.4"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       api_keys: {
@@ -72,6 +47,13 @@ export type Database = {
             foreignKeyName: "api_keys_bot_id_fkey"
             columns: ["bot_id"]
             isOneToOne: false
+            referencedRelation: "bot_analytics_summary"
+            referencedColumns: ["bot_id"]
+          },
+          {
+            foreignKeyName: "api_keys_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
             referencedRelation: "bots"
             referencedColumns: ["id"]
           },
@@ -94,6 +76,13 @@ export type Database = {
           kb_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "bot_knowledge_bases_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "bot_analytics_summary"
+            referencedColumns: ["bot_id"]
+          },
           {
             foreignKeyName: "bot_knowledge_bases_bot_id_fkey"
             columns: ["bot_id"]
@@ -190,28 +179,183 @@ export type Database = {
       chat_sessions: {
         Row: {
           bot_id: string
+          ended_at: string | null
           id: string
+          message_count: number
+          outcome: string | null
+          page_title: string | null
+          page_url: string | null
           started_at: string
+          visitor_email: string | null
           visitor_id: string | null
+          visitor_id_custom: string | null
+          visitor_name: string | null
+          visitor_phone: string | null
         }
         Insert: {
           bot_id: string
+          ended_at?: string | null
           id?: string
+          message_count?: number
+          outcome?: string | null
+          page_title?: string | null
+          page_url?: string | null
           started_at?: string
+          visitor_email?: string | null
           visitor_id?: string | null
+          visitor_id_custom?: string | null
+          visitor_name?: string | null
+          visitor_phone?: string | null
         }
         Update: {
           bot_id?: string
+          ended_at?: string | null
           id?: string
+          message_count?: number
+          outcome?: string | null
+          page_title?: string | null
+          page_url?: string | null
           started_at?: string
+          visitor_email?: string | null
           visitor_id?: string | null
+          visitor_id_custom?: string | null
+          visitor_name?: string | null
+          visitor_phone?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "chat_sessions_bot_id_fkey"
             columns: ["bot_id"]
             isOneToOne: false
+            referencedRelation: "bot_analytics_summary"
+            referencedColumns: ["bot_id"]
+          },
+          {
+            foreignKeyName: "chat_sessions_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
             referencedRelation: "bots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_metrics: {
+        Row: {
+          abandoned_count: number
+          avg_messages_per_session: number
+          bot_id: string
+          date: string
+          id: string
+          performance_score: number
+          resolution_rate: number
+          resolved_count: number
+          total_messages: number
+          total_sessions: number
+          unique_pages: number
+          unique_visitors: number
+          unresolved_count: number
+        }
+        Insert: {
+          abandoned_count?: number
+          avg_messages_per_session?: number
+          bot_id: string
+          date: string
+          id?: string
+          performance_score?: number
+          resolution_rate?: number
+          resolved_count?: number
+          total_messages?: number
+          total_sessions?: number
+          unique_pages?: number
+          unique_visitors?: number
+          unresolved_count?: number
+        }
+        Update: {
+          abandoned_count?: number
+          avg_messages_per_session?: number
+          bot_id?: string
+          date?: string
+          id?: string
+          performance_score?: number
+          resolution_rate?: number
+          resolved_count?: number
+          total_messages?: number
+          total_sessions?: number
+          unique_pages?: number
+          unique_visitors?: number
+          unresolved_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_metrics_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "bot_analytics_summary"
+            referencedColumns: ["bot_id"]
+          },
+          {
+            foreignKeyName: "daily_metrics_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "bots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      escalations: {
+        Row: {
+          bot_id: string
+          created_at: string
+          id: string
+          message: string
+          original_question: string | null
+          session_id: string
+          status: string
+          visitor_email: string
+          visitor_name: string | null
+        }
+        Insert: {
+          bot_id: string
+          created_at?: string
+          id?: string
+          message: string
+          original_question?: string | null
+          session_id: string
+          status?: string
+          visitor_email: string
+          visitor_name?: string | null
+        }
+        Update: {
+          bot_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          original_question?: string | null
+          session_id?: string
+          status?: string
+          visitor_email?: string
+          visitor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escalations_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "bot_analytics_summary"
+            referencedColumns: ["bot_id"]
+          },
+          {
+            foreignKeyName: "escalations_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "bots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalations_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -335,11 +479,192 @@ export type Database = {
         }
         Relationships: []
       }
+      session_analytics: {
+        Row: {
+          analyzed_at: string
+          bot_id: string
+          id: string
+          intent: string | null
+          is_answered: boolean | null
+          performance_score: number | null
+          sentiment: string | null
+          session_id: string
+          topics: string[] | null
+          unanswered_questions: string[] | null
+        }
+        Insert: {
+          analyzed_at?: string
+          bot_id: string
+          id?: string
+          intent?: string | null
+          is_answered?: boolean | null
+          performance_score?: number | null
+          sentiment?: string | null
+          session_id: string
+          topics?: string[] | null
+          unanswered_questions?: string[] | null
+        }
+        Update: {
+          analyzed_at?: string
+          bot_id?: string
+          id?: string
+          intent?: string | null
+          is_answered?: boolean | null
+          performance_score?: number | null
+          sentiment?: string | null
+          session_id?: string
+          topics?: string[] | null
+          unanswered_questions?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_analytics_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "bot_analytics_summary"
+            referencedColumns: ["bot_id"]
+          },
+          {
+            foreignKeyName: "session_analytics_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "bots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_analytics_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: true
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      topic_clusters: {
+        Row: {
+          bot_id: string
+          computed_date: string
+          id: string
+          question_count: number
+          sample_questions: string[] | null
+          topic_label: string
+          trend: string | null
+        }
+        Insert: {
+          bot_id: string
+          computed_date?: string
+          id?: string
+          question_count?: number
+          sample_questions?: string[] | null
+          topic_label: string
+          trend?: string | null
+        }
+        Update: {
+          bot_id?: string
+          computed_date?: string
+          id?: string
+          question_count?: number
+          sample_questions?: string[] | null
+          topic_label?: string
+          trend?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topic_clusters_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "bot_analytics_summary"
+            referencedColumns: ["bot_id"]
+          },
+          {
+            foreignKeyName: "topic_clusters_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "bots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      unanswered_questions: {
+        Row: {
+          asked_at: string
+          bot_id: string
+          frequency: number
+          id: string
+          page_url: string | null
+          question: string
+          session_id: string | null
+          status: string
+        }
+        Insert: {
+          asked_at?: string
+          bot_id: string
+          frequency?: number
+          id?: string
+          page_url?: string | null
+          question: string
+          session_id?: string | null
+          status?: string
+        }
+        Update: {
+          asked_at?: string
+          bot_id?: string
+          frequency?: number
+          id?: string
+          page_url?: string | null
+          question?: string
+          session_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unanswered_questions_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "bot_analytics_summary"
+            referencedColumns: ["bot_id"]
+          },
+          {
+            foreignKeyName: "unanswered_questions_bot_id_fkey"
+            columns: ["bot_id"]
+            isOneToOne: false
+            referencedRelation: "bots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unanswered_questions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      bot_analytics_summary: {
+        Row: {
+          abandoned_sessions: number | null
+          avg_messages: number | null
+          bot_id: string | null
+          bot_name: string | null
+          last_session_at: string | null
+          open_unanswered_questions: number | null
+          resolution_rate: number | null
+          resolved_sessions: number | null
+          total_messages: number | null
+          total_sessions: number | null
+          unresolved_sessions: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      compute_session_outcome: {
+        Args: { p_session_id: string }
+        Returns: string
+      }
       hybrid_search: {
         Args: {
           kb_ids: string[]
@@ -355,6 +680,10 @@ export type Database = {
           metadata: Json
           similarity: number
         }[]
+      }
+      is_unanswered_response: {
+        Args: { message_content: string }
+        Returns: boolean
       }
     }
     Enums: {
@@ -484,9 +813,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },
